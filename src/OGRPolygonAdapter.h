@@ -6,6 +6,8 @@
 
 #include <ogr_geometry.h>
 
+#include <boost/optional.hpp>
+
 #include <boost/range.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/iterator/iterator_categories.hpp>
@@ -23,10 +25,10 @@ namespace Winzent {
         namespace boost {
 
 
-            template <class Value>
+            template <class Container>
             class OGRPolygonIter: public ::boost::iterator_facade<
-                    OGRPolygonIter<Value>,
-                    Value,
+                    OGRPolygonIter<Container>,
+                    OGRLinearRing,
                     ::boost::random_access_traversal_tag,
                     OGRLinearRing>
             {
@@ -39,13 +41,13 @@ namespace Winzent {
                 /*!
                  * \brief The polygon we iterate
                  */
-                Value &m_polygon;
+                ::boost::optional<Container &> m_polygon;
 
 
                 /*!
                  * \brief The linear ring currently pointed to.
                  */
-                size_t m_currentRing;
+                std::ptrdiff_t m_currentRing;
 
 
                 void increment()
@@ -56,34 +58,40 @@ namespace Winzent {
 
                 void decrement()
                 {
-                    ++m_currentRing;
+                    --m_currentRing;
                 }
 
 
-                OGRLinearRing &dereference() const
+                OGRLinearRing dereference() const
                 {
-                    OGRLinearRing *ring = nullptr;
+                    OGRLinearRing *ring;
 
                     if (0 == m_currentRing) {
-                        ring = m_polygon.getExteriorRing();
+                        ring = m_polygon->getExteriorRing();
                     } else {
-                        ring = m_polygon.getInteriorRing(m_currentRing - 1);
+                        ring = m_polygon->getInteriorRing(m_currentRing-1);
                     }
 
-                    return *ring;
+                    return OGRLinearRing(ring);
                 }
 
 
-                void advance(const size_t &n)
+                void advance(const std::ptrdiff_t &n)
                 {
                     m_currentRing += n;
                 }
 
 
-                bool equal(const OGRPolygonIter<Value> &other) const
+                std::ptrdiff_t distance_to(const OGRPolygonIter &other) const
+                {
+                    return other.m_currentRing - m_currentRing;
+                }
+
+
+                bool equal(const OGRPolygonIter<Container> &other) const
                 {
                     return (other.m_currentRing == m_currentRing &&
-                            m_polygon.Equals(&other.m_polygon));
+                            m_polygon->Equals(&(other.m_polygon.get())));
                 }
 
 
@@ -95,9 +103,16 @@ namespace Winzent {
                 }
 
 
-                explicit OGRPolygonIter(Value &polygon):
+                explicit OGRPolygonIter(Container &polygon):
                         m_polygon(polygon),
                         m_currentRing(0)
+                {
+                }
+
+
+                OGRPolygonIter(const OGRPolygonIter &other):
+                        m_polygon(other.m_polygon.get()),
+                        m_currentRing(other.m_currentRing)
                 {
                 }
             };
@@ -106,14 +121,12 @@ namespace Winzent {
             /*!
              * \brief An iterator for OGRLineString objects
              */
-            typedef OGRPolygonIter<OGRPolygon>
-                    OGRPolygonIterator;
+            typedef OGRPolygonIter<OGRPolygon> OGRPolygonIterator;
 
             /*!
              * \brief A const-access iterator for OGRPolygon objects
              */
-            typedef OGRPolygonIter<const OGRPolygon>
-                    OGRPolygonConstIterator;
+            typedef OGRPolygonIter<const OGRPolygon> OGRPolygonConstIterator;
 
 
             class CustomOGRPolygonRingRange

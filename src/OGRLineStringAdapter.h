@@ -6,7 +6,9 @@
 
 #include <boost/range.hpp>
 #include <boost/geometry/geometries/register/linestring.hpp>
+#include <boost/geometry/geometries/register/multi_linestring.hpp>
 
+#include "boost/OGRPointAdapter.h"
 #include "boost/OGRPointCollectionIterator.h"
 
 
@@ -24,10 +26,8 @@ namespace  Winzent {
             /*!
              * \brief A const-access iterator for OGRLineString objects
              */
-            typedef OGRPointCollectionIter<
-                    const OGRLineString,
-                    const OGRPoint>
-                        OGRLineStringConstIterator;
+            typedef OGRPointCollectionIter<const OGRLineString, OGRPoint>
+                    OGRLineStringConstIterator;
         } // namespace boost
     } // namespace Simulation
 } // namespace Winzent
@@ -66,14 +66,14 @@ range_end(OGRLineString &l)
 
 
 inline Winzent::Simulation::boost::OGRLineStringConstIterator
-range_begin(OGRLineString const &l)
+range_begin(const OGRLineString &l)
 {
     return Winzent::Simulation::boost::OGRLineStringConstIterator(l);
 }
 
 
 inline Winzent::Simulation::boost::OGRLineStringConstIterator
-range_end(OGRLineString const &l)
+range_end(const OGRLineString &l)
 {
     auto iter = range_begin(l);
     iter += l.getNumPoints();
@@ -87,13 +87,21 @@ namespace boost {
 
 
             template<>
+            struct tag<OGRLineString *>
+            {
+                typedef linestring_tag type;
+            };
+
+
+            template<>
             struct tag<OGRLineString>
             {
                 typedef linestring_tag type;
             };
-        }
-    }
-}
+        } // namespace traits
+    } // namespace geometry
+} // namespace boost
+
 
 
 #endif // OGRLINESTRINGTOBOOSTADAPTER_H

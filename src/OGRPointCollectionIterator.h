@@ -2,6 +2,10 @@
 #define WINZENT_SIMULATION_OGRPOINTCOLLECTIONITERATOR_H
 
 
+
+#include <QtDebug>
+#include <QMap>
+
 #include <memory>
 #include <cstddef>
 
@@ -23,8 +27,7 @@ namespace Winzent {
                     OGRPointCollectionIter<Container, Value>,
                     Value,
                     ::boost::random_access_traversal_tag,
-                    Value &,
-                    int>
+                    Value>
             {
             private:
 
@@ -35,7 +38,7 @@ namespace Winzent {
                 /*!
                  * \brief Index of the current point
                  */
-                size_t m_currentPointIndex;
+                std::ptrdiff_t m_currentPointIndex;
 
 
                 /*!
@@ -44,37 +47,68 @@ namespace Winzent {
                 ::boost::optional<Container &> m_collection;
 
 
+                /*!
+                 * \brief One step forward in the collection
+                 */
                 void increment()
                 {
                     ++m_currentPointIndex;
                 }
 
 
+                /*!
+                 * \brief One step backwards
+                 */
                 void decrement()
                 {
                     --m_currentPointIndex;
                 }
 
 
-                Value &dereference() const
+                /*!
+                 * \brief Dereferences the iterator at the current position
+                 *
+                 * Does not do any bounds checking and may therefore result
+                 * in SIGSEGV if not used properly.
+                 *
+                 * \return The point at the current index
+                 */
+                Value dereference() const
                 {
-                    auto point = std::make_shared<OGRPoint>();
+                    assert(m_currentPointIndex
+                            < m_collection->getNumPoints());
+
+                    OGRPoint point;
                     m_collection->getPoint(
                             m_currentPointIndex,
-                            point.get());
-                    return *point;
+                            &point);
+                    return point;
                 }
 
 
-                void advance(const size_t &n)
+                /*!
+                 * \brief Advances the iterator by an arbitrary index
+                 *
+                 * \param[in] n The step
+                 */
+                void advance(const ptrdiff_t &n)
                 {
                     m_currentPointIndex += n;
                 }
 
 
 
-                bool equal(const OGRPointCollectionIter &other)
-                        const
+                /*!
+                 * \brief Checks for equality with another iterator
+                 *
+                 * Two iterators are deemed equal if they iterator over the
+                 * same object and are currently at the same position.
+                 *
+                 * \param[in] other The other iterator
+                 *
+                 * \return true if equal, false otherwise
+                 */
+                bool equal(const OGRPointCollectionIter &other) const
                 {
                     return (&(*m_collection) == &(*(other.m_collection))
                             && m_currentPointIndex
@@ -82,7 +116,16 @@ namespace Winzent {
                 }
 
 
-                int distance_to(const OGRPointCollectionIter &other) const
+                /*!
+                 * \brief Calculates the distance to another iterator
+                 *
+                 * \param[in] other The other iterator
+                 *
+                 * \return `other.index - this->index`
+                 */
+                std::ptrdiff_t distance_to(
+                        const OGRPointCollectionIter &other)
+                        const
                 {
                     return other.m_currentPointIndex - m_currentPointIndex;
                 }
@@ -91,7 +134,14 @@ namespace Winzent {
             public:
 
 
-                OGRPointCollectionIter()
+                OGRPointCollectionIter(): m_currentPointIndex(0)
+                {
+                }
+
+
+                OGRPointCollectionIter(const OGRPointCollectionIter &other):
+                        m_currentPointIndex(other.m_currentPointIndex),
+                        m_collection(other.m_collection.get())
                 {
                 }
 

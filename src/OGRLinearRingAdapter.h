@@ -2,6 +2,8 @@
 #define OGRLINEARRINGTOBOOSTADAPTER_H
 
 
+#include <memory>
+
 #include <ogr_geometry.h>
 
 #include <boost/range.hpp>
@@ -24,10 +26,8 @@ namespace  Winzent {
             /*!
              * \brief A const-access iterator for OGRLineString objects
              */
-            typedef OGRPointCollectionIter<
-                    const OGRLinearRing,
-                    const OGRPoint>
-                        OGRLinearRingConstIterator;
+            typedef OGRPointCollectionIter<const OGRLinearRing, OGRPoint>
+                    OGRLinearRingConstIterator;
         } // namespace boost
     } // namespace Simulation
 } // namespace Winzent
@@ -81,7 +81,27 @@ range_end(const OGRLinearRing &l)
 }
 
 
-BOOST_GEOMETRY_REGISTER_RING(OGRLinearRing)
+namespace boost {
+    namespace geometry {
+        namespace traits {
+
+
+            template<>
+            struct tag<OGRLinearRing *>
+            {
+                typedef ring_tag type;
+            };
+
+
+            template<>
+            struct tag<OGRLinearRing>
+            {
+                typedef ring_tag type;
+            };
+        } // namespace traits
+    } // namespace geometry
+} // namespace boost
+
 
 
 #endif // OGRLINEARRINGTOBOOSTADAPTER_H
