@@ -26,7 +26,8 @@ namespace  Winzent {
             /*!
              * \brief A const-access iterator for OGRLineString objects
              */
-            typedef OGRPointCollectionIter<const OGRLineString, OGRPoint>
+            typedef OGRPointCollectionIter<
+                        const OGRLineString, const OGRPoint>
                     OGRLineStringConstIterator;
         } // namespace boost
     } // namespace Simulation
@@ -35,7 +36,7 @@ namespace  Winzent {
 
 namespace boost {
     template <>
-    struct range_iterator<OGRLineString>
+    struct range_mutable_iterator<OGRLineString>
     {
         typedef Winzent::Simulation::boost::OGRLineStringIterator type;
     };
@@ -46,6 +47,50 @@ namespace boost {
     {
         typedef Winzent::Simulation::boost::OGRLineStringConstIterator type;
     };
+}
+
+
+namespace boost {
+    namespace geometry {
+        namespace traits {
+            template <>
+            struct clear<OGRLineString>
+            {
+                static inline void apply(
+                        typename rvalue_type<OGRLineString>::type range)
+                {
+                    range.empty();
+                }
+            };
+
+
+           template <>
+            struct resize<OGRLineString>
+            {
+                static inline void apply(
+                            typename rvalue_type<OGRLineString>::type,
+                            std::size_t)
+                {
+                    // NOP.
+                }
+            };
+
+
+            template <>
+            struct push_back<OGRLineString>
+            {
+                typedef OGRPoint item_type;
+
+
+                static inline void apply(
+                        typename rvalue_type<OGRLineString>::type range,
+                        item_type const &item)
+                {
+                    range.addPoint(item.getX(), item.getY(), item.getZ());
+                }
+            };
+        }
+    }
 }
 
 
@@ -81,27 +126,7 @@ range_end(const OGRLineString &l)
 }
 
 
-namespace boost {
-    namespace geometry {
-        namespace traits {
-
-
-            template<>
-            struct tag<OGRLineString *>
-            {
-                typedef linestring_tag type;
-            };
-
-
-            template<>
-            struct tag<OGRLineString>
-            {
-                typedef linestring_tag type;
-            };
-        } // namespace traits
-    } // namespace geometry
-} // namespace boost
-
+BOOST_GEOMETRY_REGISTER_LINESTRING(OGRLineString)
 
 
 #endif // OGRLINESTRINGTOBOOSTADAPTER_H

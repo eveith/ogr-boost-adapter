@@ -8,11 +8,14 @@
 
 #include <memory>
 #include <cstddef>
+#include <cassert>
+
+#include <boost/core/enable_if.hpp>
+#include <boost/type_traits/is_convertible.hpp>
 
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/iterator/iterator_concepts.hpp>
 #include <boost/iterator/iterator_categories.hpp>
-#include <boost/optional.hpp>
 
 #include <ogr_geometry.h>
 
@@ -33,18 +36,22 @@ namespace Winzent {
 
 
                 friend class ::boost::iterator_core_access;
+                template <class, class> friend class OGRPointCollectionIter;
+
+
+                struct enabler {};
 
 
                 /*!
                  * \brief Index of the current point
                  */
-                std::ptrdiff_t m_currentPointIndex;
+                std::size_t m_currentPointIndex;
 
 
                 /*!
                  * \brief The OGRLineString we iterate
                  */
-                ::boost::optional<Container &> m_collection;
+                Container *m_collection;
 
 
                 /*!
@@ -52,7 +59,7 @@ namespace Winzent {
                  */
                 void increment()
                 {
-                    ++m_currentPointIndex;
+                    m_currentPointIndex += 1;
                 }
 
 
@@ -61,7 +68,7 @@ namespace Winzent {
                  */
                 void decrement()
                 {
-                    --m_currentPointIndex;
+                    m_currentPointIndex -= 1;
                 }
 
 
@@ -91,7 +98,7 @@ namespace Winzent {
                  *
                  * \param[in] n The step
                  */
-                void advance(const ptrdiff_t &n)
+                void advance(const std::size_t &n)
                 {
                     m_currentPointIndex += n;
                 }
@@ -108,9 +115,11 @@ namespace Winzent {
                  *
                  * \return true if equal, false otherwise
                  */
-                bool equal(const OGRPointCollectionIter &other) const
+                template <class OCtr, class OVal>
+                bool equal(const OGRPointCollectionIter<OCtr, OVal> &other)
+                        const
                 {
-                    return (&(*m_collection) == &(*(other.m_collection))
+                    return (m_collection == other.m_collection
                             && m_currentPointIndex
                                 == other.m_currentPointIndex);
                 }
@@ -123,8 +132,9 @@ namespace Winzent {
                  *
                  * \return `other.index - this->index`
                  */
+                template <class OCtr, class OVal>
                 std::ptrdiff_t distance_to(
-                        const OGRPointCollectionIter &other)
+                        const OGRPointCollectionIter<OCtr, OVal> &other)
                         const
                 {
                     return other.m_currentPointIndex - m_currentPointIndex;
@@ -134,28 +144,35 @@ namespace Winzent {
             public:
 
 
-                OGRPointCollectionIter(): m_currentPointIndex(0)
+                OGRPointCollectionIter():
+                        m_currentPointIndex(0),
+                        m_collection(nullptr)
                 {
                 }
 
 
-                OGRPointCollectionIter(const OGRPointCollectionIter &other):
-                        m_currentPointIndex(other.m_currentPointIndex),
-                        m_collection(other.m_collection.get())
+                template<class OCtr, class OVal>
+                OGRPointCollectionIter(
+                        const OGRPointCollectionIter<OCtr, OVal> &other,
+                        typename ::boost::enable_if<
+                                ::boost::is_convertible<OVal, Value>,
+                                enabler>::type = enabler()):
+                            m_currentPointIndex(other.m_currentPointIndex),
+                            m_collection(other.m_collection)
                 {
                 }
 
 
                 explicit OGRPointCollectionIter(Container &c):
                         m_currentPointIndex(0),
-                        m_collection(c)
+                        m_collection(&c)
                 {
                 }
 
 
                 bool isEmpty() const
                 {
-                    return m_collection->empty();
+                    return nullptr == m_collection;
                 }
             };
         } // namespace boost
